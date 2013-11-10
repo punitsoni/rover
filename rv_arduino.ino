@@ -2,67 +2,93 @@
 
 #define SLAVE_ADDRESS 0x11
 
-int number = 0;
-int state = 0;
-
 /* state variables */
 int lspeed = 0;
 int rspeed = 0;
 
 /* commands and parameters */
-int CMD_SET = 0;
-int CMD_GET = 0;
+enum {
+ CMD_SET_LSPEED = 0,
+ CMD_SET_RSPEED = 1,
+} cmd_t;
 
-int P_RV_SPEED = 0;
-int P_SERVO_POS = 1;
-
-unsigned long reply = 0;
-int reply_idx = 0;
+int t_step = 0;
+int t_cmd = -1;
+int reply = -1;
 
 void setup() {
     pinMode(13, OUTPUT);
     Serial.begin(9600);
-    // initialize i2c as slave
     Wire.begin(SLAVE_ADDRESS);
-
-    // define callbacks for i2c communication
     Wire.onReceive(receiveDataOnI2C);
     Wire.onRequest(sendDataToI2C);
-
-    Serial.println("Ready!");
+    Serial.println("RV Controller Interface: Ready");
 }
 
 void loop() {
     delay(100);
 }
 
+int processCommand(int cmd, int data) {
+  int ret = 255;
+  switch(cmd) {
+    case CMD_SET_LSPEED:
+      lspeed = data;
+      Serial.print("lspeed = ");
+      Serial.println(lspeed);
+      break;
+    case CMD_SET_RSPEED:
+      rspeed = data;
+      Serial.print("rspeed = ");
+      Serial.println(rspeed);       
+      break;
+    default:
+      Serial.print("invalid command ");
+      Serial.println(cmd);
+      return 0;
+  }
+  return ret;
+}
+
 // callback for received data
 void receiveDataOnI2C(int byteCount) {
-  int data = 0;
-  int i = 0;
-  int b;
+  int cmd, data;
   digitalWrite(13, HIGH);
     while(Wire.available()) {
-        b = Wire.read();
-        Serial.print("data received: ");
-        Serial.println(b);
-        //if(i < 4)
-        //  data += b << 8*i;
-        data = b;
-        i++;
+        int b = Wire.read();
+        switch(t_step) {
+          case 0:
+            cmd = b;
+            Serial.print("cmd: ");
+            Serial.println(cmd);
+            t_step = 1;
+            t_cmd = cmd;
+            break;
+          case 1:
+            data = b;
+            Serial.print("data: ");
+            Serial.println(data);
+            reply = processCommand(t_cmd, data);
+            t_cmd = -1;
+            t_step = 2;
+            break;
+          default:
+            Serial.println("protocol error on receive");
+            return;
+        }
      }
-     reply = data;
      digitalWrite(13, LOW);
 }
 
 // callback for sending data
 void sendDataToI2C() {
-  
-    //int b = (reply >> (reply_idx*8)) & 0xff;
-    int b = reply;
-    Wire.write(b);
-    reply_idx ++;
-    if(reply_idx >= 4)
-      reply_idx = 0;
+    if(t_step != 2) {
+      Serial.println("protocol error on send");
+      return;
+    }
+    Serial.print("response: ");
+    Serial.println(reply);
+    Wire.write(reply);
+    t_step = 0;
 }
 
