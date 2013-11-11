@@ -31,18 +31,27 @@ Timer t;
 int lspeed = 0, rspeed = 0;
 int prev_lspeed = 0, prev_rspeed = 0;
 
-volatile unsigned int pulse_count[4] = {0, 0, 0, 0};
+volatile int pulse_count[4] = {0, 0, 0, 0};
+volatile unsigned long change_time[4];
+volatile unsigned long pulse_width[4] = {0, 0, 0, 0};
+volatile unsigned long pulse_width_h1[4] = {0, 0, 0, 0};
+volatile unsigned long pulse_width_h2[4] = {0, 0, 0, 0};
+
+
 volatile int cur_speed[4];
 volatile int req_speed[4];
 volatile unsigned char cur_pwm[4];
 volatile int cur_err[4];
 
+byte enc_old, enc_new;
+unsigned long mtime;
 
 /* motor channels 1, 2, 3, 4
  * left channels 2, 4
  * right channels 1, 3
  */
 int pins_pwm[] = {9, 6, 5, 3};
+int pins_dir[] = {7, 4, 7, 4};
 int pins_left_pwm[] = {6, 3};
 int pins_right_pwm[] = {9, 5};
 int pin_left_dir = 4;
@@ -59,6 +68,8 @@ int t_step = 0;
 int t_cmd = -1;
 int reply = -1;
 
+unsigned long dtime = 0;
+
 void setup() {
     pinMode(13, OUTPUT);
     Serial.begin(9600);
@@ -67,24 +78,91 @@ void setup() {
     Wire.onRequest(sendDataToI2C);
     init_motors();
     init_encoders();
-    t.every(SPEED_UPDATE_INTERVAL, measure_speed, (void*) 0);
-    t.every(500, display_serial, (void*) 0);
-
+    //t.every(SPEED_UPDATE_INTERVAL, measure_speed, (void*) 0);
+    //t.every(500, display_serial, (void*) 0);
+    attachInterrupt(0, isr0, CHANGE);
     Serial.println("RV Controller Interface: Ready");
 }
 
 void loop() {
-    t.update();
-    correct_speed();
+  update_encoders();
+  updateMovement();
+  //update_motors();
+  if(micros() - dtime > 499999) {
+    dtime = micros();
+    display_serial(0);
+  }
+}
+
+void update_motors() {
+  int i;
+  unsigned long req_width;
+  if(micros() - mtime > 2999) {
+    mtime = micros();
+    for(i=0; i<4; i++) {
+      digitalWrite(pins_dir[i], req_speed[i]>0);
+      req_width = 1000000 / ((abs(req_speed[i]) * 300)/100);
+      if (req_width > pulse_width[i] && cur_pwm[i] < 255)
+        cur_pwm[i]++;
+      else if (req_width > pulse_width[i] && cur_pwm[i] > 0)
+        cur_pwm[i]--;
+      analogWrite(pins_pwm[i], cur_pwm[i]);
+    }
+  }
+}
+
+void update_encoders() {
+  int i;
+  unsigned long w;
+  enc_new = PINC & B00001111;
+  unsigned long etime = micros();
+  for (i=0; i<4; i++) {
+    if((enc_old & (1 << i)) != (enc_new & (1 << i)))
+    {
+      w = int((etime - change_time[i]));
+      pulse_width[i] = (w + pulse_width_h1[i] + pulse_width_h2[i])/3;
+      pulse_width_h2[i] = pulse_width_h1[i];
+      pulse_width_h1[i] = w;
+      change_time[i]=etime;
+      pulse_count[i]++;
+    }
+    cur_speed[i] = 1000000 / ((pulse_width[i] * 300)/100);
+  }
+  enc_old=enc_new;
+}
+
+void isr0() {
+  int i;
+  /* encoder monitor */
+  //enc_new = PINC & B00001111;
+  enc_new = ~enc_old;
+  unsigned long etime = micros();
+  for (i=0; i<4; i++) {
+    if((enc_old & (1 << i)) != (enc_new & (1 << i)))
+    {
+      pulse_width[i]=int((etime - change_time[i]));
+      change_time[i]=etime;
+      pulse_count[i]++;
+    }
+  }
+  enc_old=enc_new;
 }
 
 void display_serial(void *arg) {
-  Serial.print("cur_speed, cur_pwm, cur_err: ");
+/*  Serial.print("cur_speed, cur_pwm, cur_err: ");
   Serial.print(cur_speed[0]);
   Serial.print(" ");
   Serial.print(cur_pwm[0]);
   Serial.print(" ");
   Serial.print(cur_err[0]);
+  Serial.println(" ");
+ */
+  Serial.print("pulse_width, count, speed : ");
+  Serial.print(pulse_width[0]);
+  Serial.print(" ");    
+  Serial.print(pulse_count[0]);
+  Serial.print(" ");    
+  Serial.print(cur_speed[0]);
   Serial.println(" ");
 }
 void measure_speed(void *arg) {
