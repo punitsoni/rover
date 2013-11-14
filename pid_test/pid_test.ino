@@ -75,6 +75,9 @@ void setup() {
     Wire.begin(SLAVE_ADDRESS);
     Wire.onReceive(receiveDataOnI2C);
     Wire.onRequest(sendDataToI2C);
+    
+    cbi(PORTC, 4);
+    cbi(PORTC, 5);
 
 #if 0
     digitalWrite(pins_pwm[0], HIGH);
@@ -96,17 +99,23 @@ void loop() {
     2*(1000000 * 20/pulse_width20[0]) +
     1*(1000000 * 50/pulse_width50[0]))/6;
     */
+  noInterrupts();
   pid_input = (1000000 * 20/pulse_width20[0]);
   if(micros() - last_change[0] > 100000) {
     pid_input = 0;
   }
+  interrupts();
   cur_speed[0] = (pid_input * 100) / PULSE_FREQ_MAX_SPEED;
   pid_input = cur_speed[0];
- // pid_output = 255;
+  
+  if (pid_input > 200)
+    pid_input = 0;
+  
   if(pid_setpoint == 0)
     pid_output = 0;
   else
     my_pid.Compute();
+  //pid_output = 20;
   analogWrite(pins_pwm[0], (int) pid_output);
   display_serial(0);
  
@@ -116,7 +125,6 @@ void update_params() {
   static unsigned long utime=0;
   if(micros() - utime >= 100000) {
     my_pid.SetTunings(kp, ki, kd);
-    //pid_setpoint = (req_speed[0] * PULSE_FREQ_MAX_SPEED) / 100;
     pid_setpoint = req_speed[0];
   }
 }
@@ -136,8 +144,8 @@ void display_serial(void *arg) {
     Serial.print(pid_input);
     Serial.print(" pid_output: ");  
     Serial.print(pid_output);
-    Serial.print(" cur_speed: ");  
-    Serial.print(cur_speed[0]);
+    Serial.print(" pulse_width: ");  
+    Serial.print(pulse_width20[0]);
     Serial.println(" ");
   }
 }
@@ -155,7 +163,7 @@ void init_encoders()
 }
 
 void enc0isr() {
-  static unsigned long t0_10, t0_20, t0_50;
+  static unsigned long t0_10=0, t0_20=0, t0_50=0;
   static unsigned int count10, count20, count50;
   unsigned long t1;
   if (count10 == 10) {
