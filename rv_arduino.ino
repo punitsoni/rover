@@ -215,16 +215,12 @@ int processCommand(int cmd, unsigned int data) {
       req_speed[CH_LEFT0] = lspeed;
       req_speed[CH_LEFT1] = lspeed;
       digitalWrite(pin_left_dir, lspeed > 0);
-      //Serial.print("lspeed = ");
-      //Serial.println(lspeed);
       break;
     case CMD_SET_RSPEED:
       rspeed = (signed char) data;
       req_speed[CH_RIGHT0] = rspeed;
       req_speed[CH_RIGHT1] = rspeed;    
       digitalWrite(pin_right_dir, rspeed > 0);
-      //Serial.print("rspeed = ");
-      //Serial.println(rspeed);       
       break;
     default:
       Serial.print("invalid command ");
@@ -243,15 +239,11 @@ void receiveDataOnI2C(int byteCount) {
         switch(t_step) {
           case 0:
             cmd = b;
-            //Serial.print("cmd: ");
-            //Serial.println(cmd);
             t_step = 1;
             t_cmd = cmd;
             break;
           case 1:
             data = b;
-            //Serial.print("data: ");
-            //Serial.println(data);
             reply = processCommand(t_cmd, data);
             t_cmd = -1;
             t_step = 2;
@@ -270,8 +262,6 @@ void sendDataToI2C() {
       Serial.println("protocol error on send");
       return;
     }
-    //Serial.print("response: ");
-    //Serial.println(reply);
     Wire.write(reply);
     t_step = 0;
 }
