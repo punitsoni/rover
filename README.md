@@ -1,31 +1,27 @@
-rover
-=====
+#rover
 
-## firmware
+## /firmware
 source for avr/arduino based firmware used in the project
 
-# Using ino build environment for arduino
+### Using ino build environment for arduino
 
 - ino.ini: arduino board setup file
 - lib/: arduino libraries in c++
 - src/: arduino source files
 
-Build firmware
-
+#### Build firmware
+```
 ino build
-
-Upload Firmware
-
+```
+#### Upload Firmware
+```
 ino upload
+```
+#### Serial monitor (picocom)
+start: ```ino serial```, stop: ```C-a C-x```
 
-Monitor Serial (see picocom for more help)
-
-ino serial
-
-C-a C-x: to stop picocom
-
-## Software
+## /software
 source for the high level software running on raspberry-pi
 
-## Hardware
+## /hardware
 information about hardware configuration and hardware documents
