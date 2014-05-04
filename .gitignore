@@ -1,3 +1,4 @@
 *.swp
 firmware/.build/**/*
 .DS_Store
+.AppleDouble
