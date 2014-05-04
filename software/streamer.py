@@ -5,30 +5,49 @@ import subprocess
 import time
 import sys
 
-width = 640
-height = 480
-bitrate = 250000
-timeout = 0
+class Streamer:
+  ''' Class for managing camera streaming over network using gstreamer
+      and UDP '''
+  def __init__(self, params=None):
+    self.width = 640
+    self.height = 480
+    self.bitrate = 500000
+    self.timeout = 0
+    self.host_ip = "192.168.1.141"
 
-log_file = open("streamer.log", "w")
+    # Todo: add more paramters
+    if params != None:
+      if params["host_ip"] != None:
+        self.host_ip = params["host_ip"]
 
-raspivid_cmd = ["raspivid", "-o", "-", "-w", str(width), "-h", str(height),
-                "-b", str(bitrate), "-t", str(timeout)];
+    self.log_file = open("streamer.log", "w")
 
-gst_cmd = "gst-launch-1.0 -v fdsrc ! h264parse ! \
-            rtph264pay config-interval=10 pt=96 ! \
-            udpsink host=192.168.1.141 port=9000".split()
+    self.raspivid_cmd = ["raspivid", "-o", "-", "-w", str(self.width), "-h",
+                    str(self.height), "-b", str(self.bitrate), "-t",
+                    str(self.timeout)];
 
-p_vid = subprocess.Popen(raspivid_cmd,
-              stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False)
+    gst_cmd = "gst-launch-1.0 -v fdsrc ! h264parse ! \
+                rtph264pay config-interval=10 pt=96 ! \
+                udpsink host=%s port=9000" % (self.host_ip)
+    self.gst_cmd = gst_cmd.split()
 
-p_gst = subprocess.Popen(gst_cmd, stdout=subprocess.PIPE,
-         stdin=p_vid.stdout, shell=False)
+  def start(self):
+    self.p_vid = subprocess.Popen(self.raspivid_cmd,
+                  stdout=subprocess.PIPE, stderr=self.log_file)
+    self.p_gst = subprocess.Popen(self.gst_cmd, stdout=subprocess.PIPE,
+                  stdin=self.p_vid.stdout, stderr=self.log_file)
 
-print "Streaming started."
-raw_input("Press Enter to Stop.")
+  def stop(self):
+    self.p_gst.terminate()
+    self.p_vid.terminate()
+    self.p_gst.wait()
+    self.p_vid.wait()
+    self.log_file.close()
 
-p_gst.terminate()
-p_vid.terminate()
-
-print "Finished."
+if __name__ == "__main__":
+  s = Streamer()
+  s.start()
+  print "Streaming started."
+  raw_input("Press Enter to Stop.")
+  s.stop()
+  print "Finished."

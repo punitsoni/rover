@@ -2,3 +2,4 @@
 firmware/.build/**/*
 .DS_Store
 .AppleDouble
+streamer.log
