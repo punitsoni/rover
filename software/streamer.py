@@ -26,15 +26,17 @@ class Streamer:
                     str(self.height), "-b", str(self.bitrate), "-t",
                     str(self.timeout)];
 
-    gst_cmd = "gst-launch-1.0 -v fdsrc ! h264parse ! \
-                rtph264pay config-interval=10 pt=96 ! \
-                udpsink host=%s port=9000" % (self.host_ip)
+    gst_cmd = "gst-launch-1.0 -vvv \
+                fdsrc \
+              ! h264parse \
+              ! rtph264pay config-interval=10 pt=96 \
+              ! udpsink host=%s port=9000" % (self.host_ip)
     self.gst_cmd = gst_cmd.split()
 
   def start(self):
     self.p_vid = subprocess.Popen(self.raspivid_cmd,
                   stdout=subprocess.PIPE, stderr=self.log_file)
-    self.p_gst = subprocess.Popen(self.gst_cmd, stdout=subprocess.PIPE,
+    self.p_gst = subprocess.Popen(self.gst_cmd, stdout=self.log_file,
                   stdin=self.p_vid.stdout, stderr=self.log_file)
 
   def stop(self):
@@ -45,9 +47,16 @@ class Streamer:
     self.log_file.close()
 
 if __name__ == "__main__":
-  s = Streamer()
+  if len(sys.argv) < 2:
+    #host = "punits-mac"
+    host = "192.168.1.122"
+  else:
+    host = str(sys.argv[1])
+
+  params = {"host_ip":host}
+  s = Streamer(params=params)
   s.start()
-  print "Streaming started."
+  print "Streaming started for host %s" % (host)
   raw_input("Press Enter to Stop.")
   s.stop()
   print "Finished."
