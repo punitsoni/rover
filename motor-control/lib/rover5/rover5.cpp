@@ -17,7 +17,7 @@ rover5::rover5(const rover_config *config):
     enableInterrupt(_config->wheels[2].enc_pin, &rover5::enc2_isr, CHANGE);
     enableInterrupt(_config->wheels[3].enc_pin, &rover5::enc3_isr, CHANGE);
     inst = this;
-    _motors[0].set_speed(100);
+    _motors[0].set_speed(300);
 }
 
 void rover5::update()

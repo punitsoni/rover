@@ -1,15 +1,8 @@
-/**
- * Blink
- *
- * Turns on an LED on for one second,
- * then off for one second, repeatedly.
- */
 #include "Arduino.h"
-
-#include "motor.h"
 #include "board_config.h"
 #include "rover5.h"
-//#include "EnableInterrupt.h"
+
+#include "CmdMessenger.h"
 
 static const rover_config config = {
     {
@@ -36,37 +29,59 @@ static const rover_config config = {
     }
 };
 
-uint8_t pwm_m1 = 3;
-
 rover5 rover(&config);
+
+CmdMessenger msgr = CmdMessenger(Serial);
+
+enum command_type
+{
+    CMD_ACK,
+    CMD_INFO,
+    CMD_ERROR,
+    CMD_SET_SPEED,
+};
+
+void on_unknown_cmd()
+{
+    msgr.sendCmd(CMD_ERROR, "Invalid Command");
+    Serial.print("ERROR\n");
+}
+
+void on_ack()
+{
+    msgr.sendCmd(CMD_ACK);
+}
+
+void on_set_speed()
+{
+    int speed = msgr.readInt16Arg();
+    msgr.sendCmd(CMD_ACK, "speed set");
+}
+
+void msgr_attach_callbacks()
+{
+    msgr.attach(on_unknown_cmd);
+    msgr.attach(CMD_ACK, on_ack);
+    msgr.attach(CMD_SET_SPEED, on_set_speed);
+}
+
+void serialEvent()
+{
+    msgr.feedinSerialData();
+}
 
 void setup()
 {
-  // initialize LED digital pin as an output.
-  pinMode(LED_BUILTIN, OUTPUT);
-  Serial.begin(9600);
-  Serial.print("-- Rover5 Controller --\n");
+    Serial.begin(9600);
+    pinMode(LED_BUILTIN, OUTPUT);
+    msgr.printLfCr();
+    msgr_attach_callbacks();
+    //Serial.print("-- Rover5 Controller --\n");
+    msgr.sendCmd(CMD_INFO, "Arduino has started!");
 }
 
 void loop()
 {
-    rover.update();
-    delay(50);
-    #if 0
-    // turn the LED on (HIGH is the voltage level)
-    digitalWrite(LED_BUILTIN, HIGH);
-
-    analogWrite(pwm_m1, 50);
-
-    // wait for a second
-    delay(1000);
-
-    // turn the LED off by making the voltage LOW
-    digitalWrite(LED_BUILTIN, LOW);
-
-    analogWrite(pwm_m1, 200);
-
-    // wait for a second
-delay(1000);
-  #endif
+    //rover.update();
+    //msgr.feedinSerialData();
 }
