@@ -15,6 +15,7 @@ public:
     int init(int id, uint8_t pwm_pin, uint8_t dir_pin);
     void set_direction(motor_direction dir);
     void set_speed(float rpm);
+    void set_tuning(double kp, double ki, double kd);
     void handle_enc_interrupt();
     void update();
 private:

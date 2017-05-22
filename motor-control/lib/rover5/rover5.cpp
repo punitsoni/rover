@@ -22,9 +22,12 @@ rover5::rover5(const rover_config *config):
 
 void rover5::update()
 {
+    _motors[0].update();
+    #if 0
     for (int i=0; i<NUM_WHEELS; i++) {
         _motors[i].update();
     }
+    #endif
 }
 
 void rover5::enc0_isr()

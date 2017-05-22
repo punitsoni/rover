@@ -31,7 +31,7 @@ int motor::init(int id, uint8_t pwm_pin, uint8_t dir_pin)
     pinMode(_dir_pin, OUTPUT);
     _enc_count = 0;
     _cps_setpoint = 0;
-    _ctrl.SetSampleTime(50);
+    _ctrl.SetSampleTime(10);
     _ctrl.SetMode(AUTOMATIC);
     return 0;
 }
@@ -41,6 +41,13 @@ void motor::set_direction(motor_direction dir)
     digitalWrite(_dir_pin, dir);
 }
 
+void motor::set_tuning(double kp, double ki, double kd)
+{
+    _kp = kp;
+    _ki = ki;
+    _kd = kd;
+}
+
 void motor::set_speed(float cps)
 {
     _cps_setpoint = cps;
@@ -48,9 +55,6 @@ void motor::set_speed(float cps)
 
 void motor::update()
 {
-    if (_id != 0) {
-        return;
-    }
     uint32_t cur_us = micros();
     if (cur_us - _prev_us >= SAMPLE_PERIOD) {
         uint32_t dt = cur_us - _prev_us;
@@ -70,7 +74,6 @@ void motor::update()
         }
         #endif
         analogWrite(_pwm_pin, _pwm_output);
-        //_update_rate = 1000000.0/dt;
         _prev_count = cur_count;
         _prev_us = cur_us;
         #if 0

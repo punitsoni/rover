@@ -36,8 +36,9 @@ CmdMessenger msgr = CmdMessenger(Serial);
 enum command_type
 {
     CMD_ACK,
-    CMD_INFO,
+    CMD_MSG,
     CMD_ERROR,
+    CMD_PING,
     CMD_SET_SPEED,
 };
 
@@ -47,21 +48,22 @@ void on_unknown_cmd()
     Serial.print("ERROR\n");
 }
 
-void on_ack()
+void on_ping()
 {
-    msgr.sendCmd(CMD_ACK);
+    msgr.sendCmd(CMD_ACK, CMD_PING);
 }
 
 void on_set_speed()
 {
     int speed = msgr.readInt16Arg();
-    msgr.sendCmd(CMD_ACK, "speed set");
+    msgr.sendCmd(CMD_ACK, CMD_SET_SPEED);
+    msgr.sendCmd(CMD_MSG, "speed set to " + String(speed));
 }
 
 void msgr_attach_callbacks()
 {
     msgr.attach(on_unknown_cmd);
-    msgr.attach(CMD_ACK, on_ack);
+    msgr.attach(CMD_PING, on_ping);
     msgr.attach(CMD_SET_SPEED, on_set_speed);
 }
 
@@ -72,12 +74,11 @@ void serialEvent()
 
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(115200);
     pinMode(LED_BUILTIN, OUTPUT);
     msgr.printLfCr();
     msgr_attach_callbacks();
-    //Serial.print("-- Rover5 Controller --\n");
-    msgr.sendCmd(CMD_INFO, "Arduino has started!");
+    msgr.sendCmd(CMD_MSG, "__ready_for_business__");
 }
 
 void loop()

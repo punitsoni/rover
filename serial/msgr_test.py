@@ -37,7 +37,5 @@ msgr.attach(func=on_unknown_cmd)
 msgr.attach(func=on_error, msgid=CMD_ERROR)
 msgr.attach(func=on_info, msgid=CMD_INFO)
 
-
 while True:
-    msgr.send_cmd(CMD_SET_SPEED)
     msgr.feed_in_data()
